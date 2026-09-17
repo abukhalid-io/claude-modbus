@@ -14,6 +14,7 @@ from __future__ import annotations
 import threading
 import time
 
+from pymodbus import FramerType
 from pymodbus.client import ModbusSerialClient, ModbusTcpClient
 from pymodbus.client.mixin import ModbusClientMixin
 
@@ -25,6 +26,8 @@ from core.models import (BIT_TABLES, DATATYPES, READ_ONLY_TABLES, Device,
 # kode fungsi untuk datastore & pembacaan
 READ_FN = {"holding": "read_holding_registers", "input": "read_input_registers",
            "coil": "read_coils", "discrete": "read_discrete_inputs"}
+
+FRAMER = {"rtu": FramerType.RTU, "ascii": FramerType.ASCII}
 
 MAX_REGISTERS = 125          # batas satu permintaan Modbus
 MAX_BITS = 2000
@@ -131,8 +134,9 @@ class ModbusEngine:
                                      retries=1)
         else:
             client = ModbusSerialClient(
-                dev.serial_port, baudrate=dev.baudrate, bytesize=dev.bytesize,
-                parity=dev.parity, stopbits=dev.stopbits, timeout=dev.timeout,
+                dev.serial_port, framer=FRAMER[dev.framer], baudrate=dev.baudrate,
+                bytesize=dev.bytesize, parity=dev.parity, stopbits=dev.stopbits,
+                timeout=dev.timeout, handle_local_echo=dev.handle_local_echo,
                 retries=1)
         ok = bool(client.connect())
         if not ok:
@@ -140,6 +144,12 @@ class ModbusEngine:
                 client.close()
             except Exception:
                 pass
+            if dev.transport == "rtu":
+                raise ModbusError(
+                    f"gagal membuka port serial '{dev.serial_port}' untuk "
+                    f"'{dev.id}'. Periksa: port itu ada di daftar "
+                    "(core.serialports), tidak sedang dipakai program lain, "
+                    "dan konverter USB-RS485 (mis. MOXA UPort) tercolok.")
             raise ModbusError(
                 f"gagal terhubung ke '{dev.id}' di {dev.endpoint}. "
                 "Periksa alamat/port, kabel, dan apakah perangkat menyala.")

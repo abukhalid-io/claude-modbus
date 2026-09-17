@@ -43,7 +43,7 @@ async def main() -> int:
             tools = (await s.list_tools()).tools
             names = [t.name for t in tools]
             print(f"tools            : {len(tools)}")
-            assert len(tools) >= 18, names
+            assert len(tools) >= 23, names
             assert all(n.startswith("modbus_") for n in names), names
 
             # setiap tool harus punya deskripsi dan skema input yang benar
@@ -57,6 +57,26 @@ async def main() -> int:
             wp = next(t for t in tools if t.name == "modbus_write_point")
             assert wp.annotations.destructiveHint is True
             print("skema & anotasi  : lengkap (readOnly/destructive terpasang)")
+
+            # 0. deteksi port serial (jalur MOXA USB-RS485)
+            r = payload(await s.call_tool("modbus_list_serial_ports", {}))
+            assert r["ok"] and isinstance(r["ports"], list), r
+            print(f"port serial      : {r['count']} terdeteksi "
+                  f"{[p['device'] for p in r['ports']] or '(tidak ada konverter tercolok)'}")
+
+            # profil RTU lewat konverter USB-RS485 bisa dibuat & tervalidasi
+            r = payload(await s.call_tool("modbus_add_device", {
+                "device_id": "uji_rtu", "name": "Uji RTU", "transport": "rtu",
+                "serial_port": "COM99", "baudrate": 19200, "parity": "E",
+                "stopbits": 1, "handle_local_echo": True, "unit_id": 7}))
+            assert r["ok"] and r["device"]["transport"] == "rtu", r
+            assert r["device"]["handle_local_echo"] is True, r
+            print(f"profil RTU       : {r['device']['serial_port']}@"
+                  f"{r['device']['baudrate']} unit {r['device']['unit_id']}, echo on")
+            r = payload(await s.call_tool("modbus_connect", {"device_id": "uji_rtu"}))
+            assert r["ok"] is False and "port serial" in r["error"], r
+            print(f"galat port RTU   : {r['error'][:64]}...")
+            await s.call_tool("modbus_remove_device", {"device_id": "uji_rtu"})
 
             # 1. nyalakan simulator
             r = payload(await s.call_tool("modbus_simulator", {"action": "start"}))

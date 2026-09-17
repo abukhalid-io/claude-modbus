@@ -124,6 +124,10 @@ class Device:
     parity: str = "N"
     stopbits: int = 1
     bytesize: int = 8
+    framer: str = "rtu"              # rtu | ascii (khusus transport serial)
+    handle_local_echo: bool = False  # sebagian konverter USB-RS485 memantulkan
+                                     # byte yang baru dikirim; nyalakan kalau
+                                     # tiap balasan terlihat diawali echo
     unit_id: int = 1
     timeout: float = 3.0
     allow_write: bool = False        # pengaman: tulis ditolak kecuali dinyalakan
@@ -136,6 +140,10 @@ class Device:
             raise ModbusConfigError("device id tidak boleh kosong")
         if self.transport not in ("tcp", "rtu"):
             raise ModbusConfigError("transport harus 'tcp' atau 'rtu'")
+        if self.framer not in ("rtu", "ascii"):
+            raise ModbusConfigError("framer harus 'rtu' atau 'ascii'")
+        if self.parity not in ("N", "E", "O"):
+            raise ModbusConfigError("parity harus 'N', 'E', atau 'O'")
         if not 0 <= self.unit_id <= 255:
             raise ModbusConfigError("unit_id harus 0..255")
         self.name = self.name or self.id

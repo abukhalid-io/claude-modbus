@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.engine import ModbusEngine, ModbusError, WriteRefused  # noqa: E402
 from core.models import ModbusConfigError  # noqa: E402
+from core.serialports import list_serial_ports  # noqa: E402
 from core.simulator import ModbusSimulator  # noqa: E402
 
 mcp = FastMCP("modbus_mcp")
@@ -124,6 +125,22 @@ def modbus_describe_device(
     return ok({"ok": True, "device": d, "endpoint": dev.endpoint,
                "connected": engine().is_connected(device_id),
                "points": [p.to_dict() for p in dev.points]})
+
+
+@mcp.tool(name="modbus_list_serial_ports", annotations={
+    "title": "Daftar port serial (konverter USB-RS485)", "readOnlyHint": True,
+    "destructiveHint": False, "idempotentHint": True, "openWorldHint": False})
+@guarded
+def modbus_list_serial_ports() -> str:
+    """Daftar port COM/tty yang terdeteksi di komputer ini, konverter RS-485
+    (MOXA UPort, FTDI, CH340, dan sejenisnya) diletakkan paling atas dan
+    ditandai. Pakai ini untuk tahu port mana yang harus dipakai sebuah
+    perangkat Modbus RTU sebelum membuat profilnya."""
+    ports = list_serial_ports()
+    return ok({"ok": True, "count": len(ports), "ports": ports,
+               "hint": "Kalau kosong: colokkan konverter USB-RS485 dan pastikan "
+                       "drivernya terpasang. Untuk MOXA UPort, mode RS-485 2-kawat "
+                       "diatur di MOXA Driver Manager, bukan dari aplikasi ini."})
 
 
 @mcp.tool(name="modbus_connect", annotations={
@@ -411,9 +428,16 @@ def modbus_add_device(
     transport: Annotated[str, Field(description="'tcp' atau 'rtu'")] = "tcp",
     host: Annotated[str, Field(description="Alamat IP untuk Modbus TCP")] = "127.0.0.1",
     port: Annotated[int, Field(description="Port TCP", ge=1, le=65535)] = 502,
-    serial_port: Annotated[str, Field(description="Port serial untuk RTU, mis. COM3")] = "COM1",
+    serial_port: Annotated[str, Field(description="Port serial untuk RTU, mis. COM3 "
+                                                 "(lihat modbus_list_serial_ports)")] = "COM1",
     baudrate: Annotated[int, Field(description="Baudrate untuk RTU")] = 9600,
     parity: Annotated[str, Field(description="Paritas RTU: N, E, atau O")] = "N",
+    stopbits: Annotated[int, Field(description="Stop bit RTU: 1 atau 2", ge=1, le=2)] = 1,
+    bytesize: Annotated[int, Field(description="Bit data RTU, biasanya 8", ge=5, le=8)] = 8,
+    framer: Annotated[str, Field(description="'rtu' (biasa) atau 'ascii'")] = "rtu",
+    handle_local_echo: Annotated[bool, Field(
+        description="Nyalakan kalau konverter USB-RS485 memantulkan balik byte "
+                    "yang baru dikirim sehingga balasan selalu terbaca kacau")] = False,
     unit_id: Annotated[int, Field(description="Slave/unit id", ge=0, le=255)] = 1,
     allow_write: Annotated[bool, Field(description="Izinkan perintah tulis "
                                                    "ke alat ini")] = False,
@@ -421,11 +445,17 @@ def modbus_add_device(
 ) -> str:
     """Buat profil perangkat baru dan simpan sebagai JSON. Setelah ini,
     tambahkan titik ukur dengan modbus_add_point. Berguna saat kamu punya
-    datasheet peta register dan ingin memasukkannya ke sistem."""
+    datasheet peta register dan ingin memasukkannya ke sistem.
+
+    Untuk alat yang disambung lewat konverter USB-RS485 (mis. MOXA UPort),
+    pakai transport='rtu' dan isi serial_port dengan port dari
+    modbus_list_serial_ports."""
     dev = engine().add_device({
         "id": device_id, "name": name or device_id, "transport": transport,
         "host": host, "port": port, "serial_port": serial_port,
-        "baudrate": baudrate, "parity": parity, "unit_id": unit_id,
+        "baudrate": baudrate, "parity": parity, "stopbits": stopbits,
+        "bytesize": bytesize, "framer": framer,
+        "handle_local_echo": handle_local_echo, "unit_id": unit_id,
         "allow_write": allow_write, "note": note, "points": [],
     })
     return ok({"ok": True, "device": dev.to_dict()})

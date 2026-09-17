@@ -1,8 +1,11 @@
-# Claude Modbus
+<img src="docs/logo.png" alt="Claude Modbus" width="460">
 
 Baca, olah, dan kendalikan perangkat Modbus dari Python — **lengkap dengan GUI
 dan MCP server**, supaya Claude bisa ikut membaca datanya dan (kalau diizinkan)
 mengendalikannya.
+
+Dipakai lewat **konverter USB-RS485 (MOXA UPort) untuk Modbus RTU**, atau lewat
+jaringan untuk Modbus TCP.
 
 GUI dan MCP server memakai **mesin yang sama**: perangkat yang sama, profil
 register yang sama, riwayat yang sama, dan pengaman tulis yang sama.
@@ -11,12 +14,33 @@ register yang sama, riwayat yang sama, dan pengaman tulis yang sama.
 
 ---
 
+## Pasang (otomatis)
+
+Windows — klik dua kali **`INSTALL.bat`**, atau:
+
+```bash
+python install.py
+```
+
+Satu perintah itu mengerjakan semuanya: cek versi Python, buat virtual
+environment `.venv`, pasang seluruh dependensi, verifikasi dengan uji mandiri,
+siapkan ikon, buat pintasan Desktop & Start Menu berikon, lalu menawarkan
+mendaftarkan MCP server ke Claude Code.
+
+```bash
+python install.py --mcp          # sekalian daftarkan MCP, tanpa bertanya
+python install.py --system       # pakai Python sistem, tanpa .venv
+python install.py --no-shortcut  # jangan buat pintasan
+```
+
+Mau pasang manual? `pip install -r requirements.txt` lalu `python -m gui.app`.
+
 ## Jalankan
 
 ```bash
-pip install -r requirements.txt
-python -m gui.app          # GUI  (atau klik JALANKAN.bat)
+JALANKAN.bat               # atau: python -m gui.app
 python -m core.simulator   # simulator perangkat, untuk coba tanpa hardware
+python -m core.serialports # lihat port COM yang terdeteksi
 ```
 
 Belum punya alat Modbus? Klik **Nyalakan** di kotak *Simulator bawaan*, lalu
@@ -30,6 +54,38 @@ python selftest.py         # simulator + mesin + API GUI
 python selftest_mcp.py     # MCP server sungguhan lewat stdio
 python -m core.models      # validasi model & penskalaan
 ```
+
+---
+
+## Sambung lewat MOXA USB-RS485 (Modbus RTU)
+
+1. Colok konverter (mis. **MOXA UPort 1150**) dan pasang drivernya.
+2. Di **MOXA Driver Manager**, set port itu ke **RS-485 2-wire**. Ini tidak bisa
+   diatur dari aplikasi — kalau salah mode, komunikasi tidak akan jalan.
+3. Buka GUI → halaman **Perangkat** → *Tambah Perangkat*:
+   - Transport: **Modbus RTU (serial)**
+   - Port serial: pilih dari daftar. Port MOXA ditandai **★** dan diletakkan
+     paling atas; tekan ⟳ kalau baru dicolok.
+   - Baudrate / paritas / stop bit / **Unit ID** disamakan dengan setelan alat.
+4. Simpan, pilih perangkatnya di panel kiri, lalu **Hubungkan**.
+5. Tambahkan titik ukur sesuai peta register dari datasheet alat.
+
+Contoh profil siap pakai ada di
+[`docs/contoh-moxa-rtu.json`](docs/contoh-moxa-rtu.json) — salin ke `profiles/`,
+ganti `serial_port`, lalu sesuaikan.
+
+Kalau belum tersambung juga:
+
+| Gejala | Biasanya karena |
+|---|---|
+| Port tidak muncul di daftar | driver MOXA belum terpasang, atau kabel USB belum tercolok |
+| "gagal membuka port serial" | port sedang dipakai program lain (sniffer, terminal, HMI) |
+| Tidak ada balasan sama sekali | A/B tertukar, mode bukan 2-wire, unit ID salah, atau baudrate/paritas beda |
+| Balasan selalu kacau/terpotong | konverter memantulkan echo → nyalakan **Konverter memantulkan echo** |
+| Hanya alat tertentu yang menjawab | unit ID bentrok; pakai *Explorer → Cari Unit ID* untuk menyapu 1–16 |
+| Semua register nol / error alamat | datasheet memakai penomoran 4xxxx; di sini alamat basis 0 (40001 → 0) |
+
+Termination 120 Ω dipasang di dua ujung bus, bukan di setiap alat.
 
 ---
 
@@ -58,11 +114,11 @@ Claude Desktop — tambahkan ke `claude_desktop_config.json`:
 Halaman **MCP** di GUI menampilkan perintah dan JSON yang sudah terisi path
 Python dan folder project di komputermu, tinggal salin.
 
-### 22 tool yang tersedia
+### 23 tool yang tersedia
 
 | Kelompok | Tool |
 |---|---|
-| Kenali | `modbus_list_devices`, `modbus_describe_device` |
+| Kenali | `modbus_list_devices`, `modbus_describe_device`, `modbus_list_serial_ports` |
 | Koneksi | `modbus_connect`, `modbus_disconnect` |
 | Baca | `modbus_read_all`, `modbus_read_point`, `modbus_read_raw` |
 | Tulis | `modbus_write_point`, `modbus_write_raw` |
@@ -83,6 +139,8 @@ Contoh yang bisa kamu minta ke Claude setelah MCP tersambung:
 >
 > "Register alat ini tidak terdokumentasi. Sapu holding 0–100 dan tebak mana
 > yang kelihatan seperti suhu."
+>
+> "Port COM mana yang MOXA? Buatkan perangkat RTU di situ, 9600 8N1, unit id 1."
 
 ---
 
@@ -159,6 +217,7 @@ holding register alamat `0`.
 ```
 core/
   models.py      Point & Device: validasi, penskalaan, evaluasi alarm
+  serialports.py deteksi port COM, konverter MOXA/USB-RS485 diprioritaskan
   engine.py      koneksi, baca/tulis, polling, scan, pengaman tulis
   history.py     SQLite + statistik (min/max/rata2/median/stdev/tren)
   profiles.py    muat & simpan profil JSON
@@ -169,11 +228,19 @@ gui/
   app.py         jendela pywebview + API yang dipanggil dari JS
   web/           index.html, style.css, app.js
 profiles/        profil perangkat (JSON)
+assets/          ikon aplikasi (.ico multi-ukuran + png)
+tools/           make_icons.py - membuat ulang seluruh ikon dari satu definisi
+install.py       pemasang otomatis (venv, dependensi, ikon, pintasan, MCP)
 data/            history.db + preferensi GUI (dibuat otomatis)
 ```
 
 Dibangun di atas [pymodbus](https://github.com/pymodbus-dev/pymodbus) 3.12 dan
 [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk).
+
+**Catatan versi:** `requirements.txt` mengunci `pymodbus>=3.12,<3.13` dengan
+sengaja. pymodbus 3.15 mengubah `ModbusSequentialDataBlock` menjadi berbasis
+alamat 1, sehingga simulator bawaan gagal jalan. Ikuti kunciannya sampai
+kompatibilitasnya diuji ulang.
 
 ---
 
@@ -182,8 +249,12 @@ Dibangun di atas [pymodbus](https://github.com/pymodbus-dev/pymodbus) 3.12 dan
 Semua diuji lewat simulator bawaan: pembacaan 14 titik ukur dengan berbagai
 tipe data, penulisan berskala dengan baca-balik, ketiga lapis pengaman tulis,
 polling + statistik, alarm, ekspor CSV, pembuatan profil dari nol, scan, dan
-seluruh 22 tool MCP lewat protokol stdio sungguhan.
+seluruh 23 tool MCP lewat protokol stdio sungguhan. Pemasang `install.py` juga
+diuji dari nol: venv dibuat ulang, dependensi dipasang, lalu kedua rangkaian uji
+dijalankan di dalam venv itu.
 
-**Belum diuji dengan PLC/perangkat Modbus fisik.** Untuk pemakaian pertama di
-alat sungguhan, mulailah read-only: biarkan `allow_write` mati, baca dulu,
-cocokkan nilainya dengan display alat, baru pertimbangkan menulis.
+**Belum diuji dengan PLC/perangkat Modbus fisik maupun MOXA UPort sungguhan.**
+Jalur RTU diuji lewat validasi profil dan deteksi port, bukan lalu lintas RS-485
+nyata. Untuk pemakaian pertama di alat sungguhan, mulailah read-only: biarkan
+`allow_write` mati, baca dulu, cocokkan nilainya dengan display alat, baru
+pertimbangkan menulis.

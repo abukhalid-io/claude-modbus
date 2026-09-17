@@ -1,0 +1,66 @@
+{
+  "_petunjuk": "Contoh perangkat Modbus RTU lewat konverter USB-RS485 (MOXA UPort). Salin file ini ke folder profiles/, ganti serial_port dengan port dari daftar (Perangkat > Port serial, atau tool modbus_list_serial_ports), lalu sesuaikan baudrate/paritas/unit_id dengan setelan alatmu. Hapus baris _petunjuk sebelum dipakai.",
+
+  "id": "meteran_rs485",
+  "name": "Power Meter (RS-485 via MOXA)",
+  "transport": "rtu",
+  "serial_port": "COM3",
+  "baudrate": 9600,
+  "parity": "N",
+  "stopbits": 1,
+  "bytesize": 8,
+  "framer": "rtu",
+  "handle_local_echo": false,
+  "unit_id": 1,
+  "timeout": 1.5,
+  "allow_write": false,
+  "poll_interval": 5.0,
+  "note": "Mode RS-485 2-kawat diatur di MOXA Driver Manager, bukan dari aplikasi ini.",
+
+  "points": [
+    {
+      "name": "tegangan",
+      "address": 0,
+      "table": "holding",
+      "datatype": "float32",
+      "word_order": "big",
+      "unit": "V",
+      "description": "Tegangan fasa-netral",
+      "alarm_low": 190.0,
+      "alarm_high": 250.0
+    },
+    {
+      "name": "arus",
+      "address": 2,
+      "table": "holding",
+      "datatype": "float32",
+      "unit": "A",
+      "description": "Arus fasa"
+    },
+    {
+      "name": "daya_aktif",
+      "address": 4,
+      "table": "holding",
+      "datatype": "int32",
+      "scale": 0.1,
+      "unit": "kW",
+      "description": "Register menyimpan nilai x10"
+    },
+    {
+      "name": "frekuensi",
+      "address": 8,
+      "table": "input",
+      "datatype": "uint16",
+      "scale": 0.01,
+      "unit": "Hz",
+      "description": "Input register, hanya baca"
+    },
+    {
+      "name": "relay_output",
+      "address": 0,
+      "table": "coil",
+      "description": "Kontak keluaran",
+      "writable": true
+    }
+  ]
+}

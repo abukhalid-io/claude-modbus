@@ -1,4 +1,7 @@
-pymodbus>=3.12
-pywebview>=5.0
-mcp>=1.2
+# Versi dikunci ke rentang yang benar-benar diuji.
+# pymodbus 3.15 mengubah ModbusSequentialDataBlock (alamat jadi berbasis 1),
+# sehingga simulator bawaan gagal jalan. mcp 2.x juga belum diuji di sini.
+pymodbus>=3.12,<3.13
+mcp>=1.2,<2
+pywebview>=5.0,<7
 pyserial>=3.5

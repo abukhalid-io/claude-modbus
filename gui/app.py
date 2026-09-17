@@ -26,12 +26,49 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.engine import ModbusEngine, ModbusError, WriteRefused  # noqa: E402
 from core.models import DATATYPES, TABLES, ModbusConfigError  # noqa: E402
+from core.serialports import list_serial_ports  # noqa: E402
 from core.simulator import ModbusSimulator  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 WEB = os.path.join(HERE, "web")
 PREFS = os.path.join(ROOT, "data", "gui.json")
+ICON = os.path.join(ROOT, "assets", "icon.ico")
+APP_ID = "abukhalid.claude-modbus"
+TITLE = "Claude Modbus  -  pembaca & pengendali perangkat Modbus"
+
+
+def _set_app_id() -> None:
+    """Taskbar Windows mengelompokkan per AppUserModelID; tanpa ini jendela
+    kita menumpang ikon python.exe. Harus dipanggil sebelum jendela dibuat."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
+    except Exception:
+        pass
+
+
+def _apply_window_icon() -> bool:
+    """Pasang icon.ico ke jendela (judul + taskbar) lewat WM_SETICON."""
+    if sys.platform != "win32" or not os.path.exists(ICON):
+        return False
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        hwnd = user32.FindWindowW(None, TITLE)
+        if not hwnd:
+            return False
+        IMAGE_ICON, LR_LOADFROMFILE, WM_SETICON = 1, 0x0010, 0x0080
+        for size, which in ((32, 1), (16, 0)):        # 1 = ICON_BIG, 0 = ICON_SMALL
+            handle = user32.LoadImageW(None, ICON, IMAGE_ICON, size, size,
+                                       LR_LOADFROMFILE)
+            if handle:
+                user32.SendMessageW(hwnd, WM_SETICON, which, handle)
+        return True
+    except Exception:
+        return False
 
 
 def _prefs() -> dict:
@@ -80,6 +117,7 @@ class Api:
             "devices": self.engine.status(),
             "tables": TABLES,
             "datatypes": list(DATATYPES) + ["bool (pakai table coil/discrete)"],
+            "serial_ports": list_serial_ports(),
             "profiles_dir": self.engine.profiles_dir,
             "db_path": self.engine.history.path,
             "python": sys.executable,
@@ -94,6 +132,10 @@ class Api:
     # ── perangkat ─────────────────────────────────────────────
     def devices(self) -> dict:
         return {"ok": True, "devices": self.engine.status()}
+
+    def serial_ports(self) -> dict:
+        """Port COM yang terdeteksi; konverter MOXA/USB-RS485 paling atas."""
+        return {"ok": True, "ports": list_serial_ports()}
 
     @result
     def describe(self, device_id: str) -> dict:
@@ -123,6 +165,7 @@ class Api:
     def add_device(self, data: dict) -> dict:
         data = dict(data)
         data.setdefault("points", [])
+        data["handle_local_echo"] = bool(data.get("handle_local_echo"))
         for key in ("port", "unit_id", "baudrate", "bytesize", "stopbits"):
             if key in data and data[key] not in (None, ""):
                 data[key] = int(data[key])
@@ -288,14 +331,27 @@ class Api:
 
 
 def main() -> None:
+    _set_app_id()
     api = Api()
     window = webview.create_window(
-        "Claude Modbus  -  pembaca & pengendali perangkat Modbus",
-        os.path.join(WEB, "index.html"),
+        TITLE, os.path.join(WEB, "index.html"),
         js_api=api, width=1440, height=920, min_size=(1120, 720),
         background_color="#F5F4EE")
     window.events.closed += api.shutdown
-    webview.start()
+
+    def on_shown() -> None:
+        # jendela baru ada setelah ditampilkan; coba beberapa kali kalau telat
+        import threading
+
+        def pasang() -> None:
+            for _ in range(20):
+                if _apply_window_icon():
+                    return
+                time.sleep(0.15)
+        threading.Thread(target=pasang, daemon=True).start()
+
+    window.events.shown += on_shown
+    webview.start(icon=ICON if os.path.exists(ICON) else None)
 
 
 if __name__ == "__main__":

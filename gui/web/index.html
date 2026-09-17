@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Claude Modbus</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,6 +12,7 @@
 <div class="app">
   <aside class="sidebar">
     <div class="brand">
+      <img src="icon.svg" class="brand-mark" alt="">
       <div>
         <div class="brand-name">Claude Modbus</div>
         <div class="brand-sub">baca &middot; olah &middot; kendalikan</div>
@@ -118,11 +120,27 @@
                 <option value="rtu">Modbus RTU (serial)</option></select></div>
             <div class="field"><label>Host / IP</label><input id="nd_host" value="127.0.0.1"></div>
             <div class="field"><label>Port TCP</label><input id="nd_port" value="502"></div>
-            <div class="field"><label>Port serial</label><input id="nd_serial" value="COM3"></div>
-            <div class="field"><label>Baudrate</label><input id="nd_baud" value="9600"></div>
+            <div class="field"><label>Port serial (USB-RS485)</label>
+              <div class="row tight">
+                <select id="nd_serial" class="grow"></select>
+                <button class="icon-btn" id="nd_rescan" title="Pindai ulang port">&#8635;</button>
+              </div></div>
+            <div class="field"><label>Baudrate</label>
+              <select id="nd_baud">
+                <option>1200</option><option>2400</option><option>4800</option>
+                <option selected>9600</option><option>19200</option>
+                <option>38400</option><option>57600</option><option>115200</option>
+              </select></div>
             <div class="field"><label>Paritas</label>
               <select id="nd_parity"><option>N</option><option>E</option><option>O</option></select></div>
+            <div class="field"><label>Stop bit</label>
+              <select id="nd_stop"><option>1</option><option>2</option></select></div>
             <div class="field"><label>Unit / Slave ID</label><input id="nd_unit" value="1"></div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <label class="tg"><button class="switch" id="nd_echo" role="switch"></button>
+              <span>Konverter memantulkan echo</span></label>
+            <span class="muted" id="serialHint"></span>
           </div>
           <button class="btn btn-primary" id="addDev" style="margin-top:14px">Simpan Perangkat</button>
         </div>

@@ -91,6 +91,8 @@ html, body {
 }
 
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 6px 4px; }
+.brand-mark { width: 30px; height: 30px; flex: none; border-radius: 8px;
+              box-shadow: 0 1px 3px rgba(31,30,29,.18); }
 .brand-name { font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
 .brand-sub { font-size: 11px; color: var(--faint); margin-top: 1px; }
 

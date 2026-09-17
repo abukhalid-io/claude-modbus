@@ -53,6 +53,7 @@ async function init() {
   }
 
   renderDevices(b.devices);
+  renderSerialPorts(b.serial_ports || []);
   wire();
   setInterval(tick, 1000);
   refreshMcp();
@@ -101,6 +102,13 @@ function wire() {
   $("readStore").onclick = () => readAll(true);
 
   $("reloadDev").onclick = async () => renderDevices((await api.devices()).devices);
+  $("nd_rescan").onclick = async () => {
+    const r = await api.serial_ports();
+    renderSerialPorts(r.ports || []);
+    toast(`${(r.ports || []).length} port serial terdeteksi`);
+  };
+  $("nd_transport").onchange = updateTransportHint;
+  S.ndEcho = bindSwitch("nd_echo", false);
   $("addDev").onclick = addDevice;
   $("addPoint").onclick = addPoint;
 
@@ -356,8 +364,11 @@ async function addDevice() {
     transport: $("nd_transport").value, host: $("nd_host").value.trim(),
     port: $("nd_port").value, serial_port: $("nd_serial").value.trim(),
     baudrate: $("nd_baud").value, parity: $("nd_parity").value,
+    stopbits: $("nd_stop").value, handle_local_echo: S.ndEcho.get(),
     unit_id: $("nd_unit").value, allow_write: false,
   };
+  if (data.transport === "rtu" && !data.serial_port)
+    return toast("Pilih port serial dulu (colok konverter USB-RS485)", "err");
   if (!data.id) return toast("ID perangkat wajib diisi", "err");
   const r = await api.add_device(data);
   if (!r.ok) return toast(r.error, "err");
@@ -534,4 +545,30 @@ async function refreshLog() {
 function tick() {
   $("clock").textContent = new Date().toLocaleTimeString("id-ID");
   if ($("page-mcp").classList.contains("is-active")) refreshLog();
+}
+
+/* ══════════ port serial ══════════ */
+function renderSerialPorts(ports) {
+  S.serialPorts = ports;
+  const sel = $("nd_serial");
+  sel.innerHTML = "";
+  if (!ports.length) {
+    sel.appendChild(new Option("(tidak ada port terdeteksi)", ""));
+  } else {
+    for (const p of ports) {
+      const tanda = p.is_moxa ? "  ★ MOXA" : p.likely_rs485 ? "  ·  RS-485?" : "";
+      sel.appendChild(new Option(`${p.device}  —  ${p.description}${tanda}`, p.device));
+    }
+  }
+  updateTransportHint();
+}
+
+function updateTransportHint() {
+  const rtu = $("nd_transport").value === "rtu";
+  const n = (S.serialPorts || []).length;
+  $("serialHint").textContent = !rtu
+    ? "Modbus TCP: isi Host/IP dan Port."
+    : n
+      ? "Mode RS-485 2-kawat diatur di MOXA Driver Manager, bukan di sini."
+      : "Belum ada port serial. Colok konverter USB-RS485 lalu tekan ⟳.";
 }
