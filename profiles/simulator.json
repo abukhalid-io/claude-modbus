@@ -1,0 +1,125 @@
+{
+  "id": "simulator",
+  "name": "Tangki Simulasi (SIM-TANK-01)",
+  "transport": "tcp",
+  "host": "127.0.0.1",
+  "port": 15020,
+  "unit_id": 1,
+  "timeout": 3.0,
+  "allow_write": true,
+  "poll_interval": 2.0,
+  "note": "Perangkat contoh dari core/simulator.py. Jalankan 'python -m core.simulator' atau nyalakan simulator dari GUI / MCP sebelum menghubungkan.",
+  "points": [
+    {
+      "name": "suhu_tangki",
+      "address": 0,
+      "table": "holding",
+      "datatype": "float32",
+      "unit": "degC",
+      "description": "Suhu air di dalam tangki",
+      "alarm_high": 78.0
+    },
+    {
+      "name": "tekanan",
+      "address": 2,
+      "table": "holding",
+      "datatype": "float32",
+      "unit": "bar",
+      "description": "Tekanan keluaran pompa",
+      "alarm_high": 2.5
+    },
+    {
+      "name": "level_tangki",
+      "address": 4,
+      "table": "holding",
+      "datatype": "int16",
+      "scale": 0.1,
+      "unit": "%",
+      "description": "Ketinggian air, register menyimpan nilai x10",
+      "alarm_low": 10.0,
+      "alarm_high": 85.0
+    },
+    {
+      "name": "laju_alir",
+      "address": 6,
+      "table": "holding",
+      "datatype": "float32",
+      "unit": "m3/jam",
+      "description": "Laju alir keluaran"
+    },
+    {
+      "name": "total_liter",
+      "address": 8,
+      "table": "holding",
+      "datatype": "uint32",
+      "unit": "L",
+      "description": "Penghitung total air yang lewat"
+    },
+    {
+      "name": "kecepatan_pompa",
+      "address": 10,
+      "table": "holding",
+      "datatype": "uint16",
+      "unit": "%",
+      "description": "Setelan kecepatan pompa",
+      "writable": true
+    },
+    {
+      "name": "setpoint_suhu",
+      "address": 12,
+      "table": "holding",
+      "datatype": "int16",
+      "scale": 0.1,
+      "unit": "degC",
+      "description": "Setpoint pemanas, register menyimpan nilai x10",
+      "writable": true
+    },
+    {
+      "name": "nama_perangkat",
+      "address": 20,
+      "table": "holding",
+      "datatype": "string",
+      "length": 8,
+      "description": "Nama alat yang tersimpan di register"
+    },
+    {
+      "name": "pompa_jalan",
+      "address": 0,
+      "table": "coil",
+      "description": "Perintah jalan/berhenti pompa",
+      "writable": true
+    },
+    {
+      "name": "pemanas_jalan",
+      "address": 1,
+      "table": "coil",
+      "description": "Perintah nyala/mati pemanas",
+      "writable": true
+    },
+    {
+      "name": "katup_buang",
+      "address": 2,
+      "table": "coil",
+      "description": "Katup pembuangan",
+      "writable": true
+    },
+    {
+      "name": "alarm_level_tinggi",
+      "address": 0,
+      "table": "discrete",
+      "description": "Sakelar level tinggi dari lapangan"
+    },
+    {
+      "name": "alarm_suhu_tinggi",
+      "address": 1,
+      "table": "discrete",
+      "description": "Termostat pengaman"
+    },
+    {
+      "name": "status_siap",
+      "address": 2,
+      "table": "discrete",
+      "description": "Sistem siap (pompa jalan dan tekanan cukup)"
+    }
+  ]
+}

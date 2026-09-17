@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Modbus</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div>
+        <div class="brand-name">Claude Modbus</div>
+        <div class="brand-sub">baca &middot; olah &middot; kendalikan</div>
+      </div>
+      <button class="icon-btn" id="themeBtn" title="Ganti tema (Ctrl+D)">&#9680;</button>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item is-active" data-page="live"><span>&#9673;</span>Live</button>
+      <button class="nav-item" data-page="devices"><span>&#9776;</span>Perangkat</button>
+      <button class="nav-item" data-page="history"><span>&#9642;</span>Riwayat</button>
+      <button class="nav-item" data-page="explorer"><span>&#9881;</span>Explorer</button>
+      <button class="nav-item" data-page="mcp"><span>&#10038;</span>MCP</button>
+    </nav>
+
+    <div class="card">
+      <div class="card-label">Perangkat aktif</div>
+      <select id="deviceSel" class="grow" style="width:100%"></select>
+      <div class="row between" style="margin-top:10px">
+        <span class="muted" id="endpoint">-</span>
+        <span class="chip" id="connChip">terputus</span>
+      </div>
+      <button class="btn btn-ok block" id="connectBtn" style="margin-top:10px">Hubungkan</button>
+      <div class="row between" style="margin-top:12px">
+        <label>Polling tiap</label>
+        <div class="row tight">
+          <input id="pollSec" class="mini-num" value="2">
+          <span class="muted">dtk</span>
+        </div>
+      </div>
+      <button class="btn tonal block" id="pollBtn" style="margin-top:8px">Mulai Polling</button>
+      <div class="row between" style="margin-top:12px">
+        <label>Izinkan tulis</label>
+        <button class="switch" id="allowWrite" role="switch" aria-checked="false"></button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Simulator bawaan</div>
+      <p class="muted" style="line-height:1.5">Perangkat Modbus tiruan untuk mencoba tanpa hardware.</p>
+      <div class="row between" style="margin-top:10px">
+        <span class="muted mono" id="simUrl">mati</span>
+        <button class="btn ghost sm" id="simBtn">Nyalakan</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ── LIVE ── -->
+    <section class="page is-active" id="page-live">
+      <div class="card toolbar">
+        <button class="btn btn-primary" id="readNow">Baca Sekarang</button>
+        <button class="btn ghost" id="readStore">Baca &amp; Simpan</button>
+        <div class="spacer"></div>
+        <span class="chip" id="alarmChip"></span>
+        <span class="muted mono" id="liveTime"></span>
+      </div>
+
+      <div class="card grow-card">
+        <div class="card-head">
+          <h2 id="liveTitle">Titik Ukur</h2>
+          <span class="chip" id="pointCount">0</span>
+        </div>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr>
+              <th>Titik ukur</th><th class="w110">Tabel</th><th class="w80 r">Alamat</th>
+              <th class="w110">Tipe</th><th class="r w160">Nilai</th>
+              <th class="w80 c">Status</th><th class="w220 r">Tulis</th>
+            </tr></thead>
+            <tbody id="liveBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PERANGKAT ── -->
+    <section class="page" id="page-devices">
+      <div class="card">
+        <div class="card-head"><h2>Perangkat Terdaftar</h2>
+          <span class="chip" id="devCount">0</span>
+          <div class="spacer"></div>
+          <button class="btn ghost sm" id="reloadDev">Muat Ulang Profil</button>
+        </div>
+        <div class="table-wrap" style="max-height:230px">
+          <table class="tbl">
+            <thead><tr><th>ID</th><th>Nama</th><th class="w160">Alamat</th>
+              <th class="w60 r">Unit</th><th class="w70 r">Point</th>
+              <th class="w90 c">Tulis</th><th class="w90 c">Status</th>
+              <th class="w80 c">Hapus</th></tr></thead>
+            <tbody id="devBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="cols">
+        <div class="card grow-card">
+          <div class="card-head"><h2>Tambah Perangkat</h2></div>
+          <div class="form-grid">
+            <div class="field"><label>ID</label><input id="nd_id" placeholder="mis. plc_boiler"></div>
+            <div class="field"><label>Nama</label><input id="nd_name" placeholder="Boiler Line 1"></div>
+            <div class="field"><label>Transport</label>
+              <select id="nd_transport"><option value="tcp">Modbus TCP</option>
+                <option value="rtu">Modbus RTU (serial)</option></select></div>
+            <div class="field"><label>Host / IP</label><input id="nd_host" value="127.0.0.1"></div>
+            <div class="field"><label>Port TCP</label><input id="nd_port" value="502"></div>
+            <div class="field"><label>Port serial</label><input id="nd_serial" value="COM3"></div>
+            <div class="field"><label>Baudrate</label><input id="nd_baud" value="9600"></div>
+            <div class="field"><label>Paritas</label>
+              <select id="nd_parity"><option>N</option><option>E</option><option>O</option></select></div>
+            <div class="field"><label>Unit / Slave ID</label><input id="nd_unit" value="1"></div>
+          </div>
+          <button class="btn btn-primary" id="addDev" style="margin-top:14px">Simpan Perangkat</button>
+        </div>
+
+        <div class="col-right">
+          <div class="card grow-card">
+            <div class="card-head"><h2>Tambah Titik Ukur</h2></div>
+            <p class="muted">Ke perangkat aktif: <b id="npTarget">-</b></p>
+            <div class="form-grid" style="margin-top:12px">
+              <div class="field"><label>Nama</label><input id="np_name" placeholder="suhu_masuk"></div>
+              <div class="field"><label>Tabel</label>
+                <select id="np_table">
+                  <option value="holding">holding</option><option value="input">input</option>
+                  <option value="coil">coil</option><option value="discrete">discrete</option>
+                </select></div>
+              <div class="field"><label>Alamat</label><input id="np_addr" value="0"></div>
+              <div class="field"><label>Tipe data</label><select id="np_type"></select></div>
+              <div class="field"><label>Skala</label><input id="np_scale" value="1"></div>
+              <div class="field"><label>Offset</label><input id="np_offset" value="0"></div>
+              <div class="field"><label>Satuan</label><input id="np_unit" placeholder="degC"></div>
+              <div class="field"><label>Alarm bawah</label><input id="np_low" placeholder="kosong"></div>
+              <div class="field"><label>Alarm atas</label><input id="np_high" placeholder="kosong"></div>
+            </div>
+            <div class="row" style="margin-top:12px">
+              <label class="tg"><button class="switch" id="np_write" role="switch"></button>
+                <span>Boleh ditulis</span></label>
+              <div class="spacer"></div>
+              <button class="btn btn-primary" id="addPoint">Tambah Point</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── RIWAYAT ── -->
+    <section class="page" id="page-history">
+      <div class="card toolbar">
+        <div class="field"><label>Titik ukur</label><select id="histPoint"></select></div>
+        <div class="field"><label>Jendela (menit)</label><input id="histMin" class="mini-num" value="30"></div>
+        <button class="btn ghost" id="histLoad">Muat</button>
+        <div class="spacer"></div>
+        <button class="btn tonal" id="histExport">Ekspor CSV</button>
+        <button class="btn tonal-danger" id="histClear">Hapus Riwayat</button>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2 id="histTitle">Grafik</h2>
+          <span class="chip" id="histChip"></span></div>
+        <canvas id="chart"></canvas>
+      </div>
+
+      <div class="card grow-card">
+        <div class="card-head"><h2>Ringkasan</h2></div>
+        <div class="tile-row" id="statTiles"></div>
+        <div style="margin-top:14px" id="statMore"></div>
+      </div>
+    </section>
+
+    <!-- ── EXPLORER ── -->
+    <section class="page" id="page-explorer">
+      <div class="cols">
+        <div class="card grow-card">
+          <div class="card-head"><h2>Baca / Tulis Register Mentah</h2></div>
+          <div class="row gap8">
+            <select id="ex_table" style="width:140px">
+              <option value="holding">holding</option><option value="input">input</option>
+              <option value="coil">coil</option><option value="discrete">discrete</option>
+            </select>
+            <span class="muted">alamat</span><input id="ex_addr" class="mini-num" value="0">
+            <span class="muted">jumlah</span><input id="ex_count" class="mini-num" value="8">
+            <button class="btn btn-primary" id="ex_read">Baca</button>
+          </div>
+          <div class="row gap8" style="margin-top:10px">
+            <span class="muted">tulis nilai</span>
+            <input id="ex_values" class="grow mono" placeholder="mis. 650 atau 1 0 1">
+            <button class="btn tonal-danger" id="ex_write">Tulis</button>
+          </div>
+          <pre class="dump" id="ex_out" style="margin-top:12px;flex:1">Hasil pembacaan muncul di sini.</pre>
+        </div>
+
+        <div class="col-right">
+          <div class="card">
+            <div class="card-head"><h2>Cari Unit ID</h2></div>
+            <div class="row gap8">
+              <span class="muted">dari</span><input id="su_start" class="mini-num" value="1">
+              <span class="muted">sampai</span><input id="su_end" class="mini-num" value="16">
+              <div class="spacer"></div>
+              <button class="btn ghost" id="su_go">Scan</button>
+            </div>
+            <pre class="dump sm" id="su_out" style="margin-top:10px">-</pre>
+          </div>
+          <div class="card grow-card">
+            <div class="card-head"><h2>Sapu Blok Register</h2></div>
+            <div class="row gap8">
+              <select id="sr_table" style="width:120px">
+                <option value="holding">holding</option><option value="input">input</option>
+                <option value="coil">coil</option><option value="discrete">discrete</option>
+              </select>
+              <input id="sr_start" class="mini-num" value="0">
+              <span class="muted">..</span><input id="sr_end" class="mini-num" value="31">
+              <div class="spacer"></div>
+              <button class="btn ghost" id="sr_go">Sapu</button>
+            </div>
+            <pre class="dump" id="sr_out" style="margin-top:10px;flex:1">-</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── MCP ── -->
+    <section class="page" id="page-mcp">
+      <div class="card">
+        <div class="card-head"><h2>Sambungkan ke Claude</h2>
+          <span class="chip accent">22 tool</span></div>
+        <p class="muted" style="line-height:1.6">
+          MCP server memakai mesin yang sama dengan GUI ini, jadi Claude membaca
+          perangkat yang sama, profil yang sama, dan riwayat yang sama.
+          Pengaman tulis juga ikut: perintah tulis ditolak kecuali
+          <b>Izinkan tulis</b> menyala untuk perangkat itu.
+        </p>
+      </div>
+
+      <div class="cols">
+        <div class="card grow-card">
+          <div class="card-head"><h2>Claude Code (satu perintah)</h2>
+            <div class="spacer"></div>
+            <button class="btn ghost sm" id="copyCli">Salin</button></div>
+          <pre class="snippet" id="mcpCli">-</pre>
+
+          <div class="card-head" style="margin-top:18px"><h2>Claude Desktop (config JSON)</h2>
+            <div class="spacer"></div>
+            <button class="btn ghost sm" id="copyJson">Salin</button></div>
+          <pre class="snippet" id="mcpJson" style="flex:1">-</pre>
+        </div>
+
+        <div class="col-right">
+          <div class="card">
+            <div class="card-head"><h2>Yang bisa diminta ke Claude</h2></div>
+            <div class="kv"><span>Potret kondisi</span><b>read_all</b></div>
+            <div class="kv"><span>Analisis tren</span><b>statistics</b></div>
+            <div class="kv"><span>Cek alarm</span><b>alarms</b></div>
+            <div class="kv"><span>Rekam berkala</span><b>start_polling</b></div>
+            <div class="kv"><span>Ubah setpoint</span><b>write_point</b></div>
+            <div class="kv"><span>Petakan alat baru</span><b>scan_registers</b></div>
+            <div class="kv"><span>Buat profil</span><b>add_device / add_point</b></div>
+            <div class="kv"><span>Ekspor data</span><b>export_csv</b></div>
+          </div>
+          <div class="card grow-card">
+            <div class="card-head"><h2>Log Mesin</h2></div>
+            <div class="log mono" id="engLog" style="flex:1"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="statusbar">
+  <span id="status">Siap.</span>
+  <div class="spacer"></div>
+  <span class="mono muted" id="dbPath"></span>
+  <span class="mono muted" id="clock"></span>
+</footer>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

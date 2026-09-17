@@ -1,0 +1,4 @@
+pymodbus>=3.12
+pywebview>=5.0
+mcp>=1.2
+pyserial>=3.5
